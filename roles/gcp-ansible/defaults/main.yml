@@ -1,0 +1,19 @@
+---
+plugin: gcp_compute
+instance_name: 
+  - linux
+  - ubunt
+  - win
+machine_type: g1-small
+disk_size_gb: 50
+ip_cidr_range: 172.16.0.0/28
+regions:
+  - australia-southeast1
+zones:
+  - australia-southeast1-b
+auth_kind: serviceaccount
+scopes:
+  - https://www.googleapis.com/auth/compute
+service_account_file: /etc/ansbile/workspace/GCP_provisioning/account.json
+projects:
+  - gco-cm-tool

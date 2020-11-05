@@ -1,0 +1,178 @@
+---
+- name: Create VPC Network
+  gcp_compute_network:
+    name: gcp-ansible-network
+    auto_create_subnetworks: yes
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: network
+
+- name: Create subnet within above VPC network
+  gcp_compute_subnetwork:
+    name: gcp-ansible-subnet
+    region: "{{ regions }}"
+    network: "{{ network }}"
+    ip_cidr_range: "{{ ip_cidr_range }}"
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: subnet
+
+- name: Create firewall rule to allow port 80 and 22 for all source IPs
+  gcp_compute_firewall:
+    name: ansible-firewall
+    network: "{{ network }}"
+    allowed:
+    - ip_protocol: tcp
+      ports: ['80','22']
+    target_tags:
+      - gcp-ansible
+    source_ranges: ['0.0.0.0/0']
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: firewall
+
+- name: Create IP address for instance name
+  gcp_compute_address:
+    name: "{{ instance_name }}"
+    region: "{{ regions }}"
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: address
+###########################################################################
+#                                                                         #
+#                           CENTOS CREATION                               #
+#                                                                         #
+###########################################################################
+- name: Create disk for new instance
+  gcp_compute_disk:
+    name: linux
+    size_gb: "{{ disk_size_gb }}"
+    source_image: 'projects/centos-cloud/global/images/centos-7-v20190116'
+    zone: "{{ zones }}"
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: disklinux
+
+- name: Create new instance
+  gcp_compute_instance:
+    state: present
+    name: linux
+    machine_type: "{{ machine_type }}"
+    disks:
+    - auto_delete: true
+      boot: true
+      source: "{{ disk }}"
+    network_interfaces:
+    - network: "{{ network }}"
+      subnetwork: "{{ subnet }}"
+      access_configs:
+      - name: External NAT
+        nat_ip: "{{ address }}"
+        type: ONE_TO_ONE_NAT
+    zone: "{{ zones }}"
+    tags:
+      items:
+        - gcp-ansible-centos
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+  register: instancelinux
+
+- debug:
+    var: instancelinux
+###########################################################################
+#                                                                         #
+#                           UBUNTU CREATION                               #
+#                                                                         #
+###########################################################################
+- name: Create disk for new instance
+  gcp_compute_disk:
+    name: ubunt
+    size_gb: "{{ disk_size_gb }}"
+    source_image: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-1604-lts'
+    zone: "{{ zones }}"
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: diskubunt
+
+- name: Create new instance
+  gcp_compute_instance:
+    state: present
+    name: ubunt
+    machine_type: "{{ machine_type }}"
+    disks:
+    - auto_delete: true
+      boot: true
+      source: "{{ disk }}"
+    network_interfaces:
+    - network: "{{ network }}"
+      subnetwork: "{{ subnet }}"
+      access_configs:
+      - name: External NAT
+        nat_ip: "{{ address }}"
+        type: ONE_TO_ONE_NAT
+    zone: "{{ zones }}"
+    tags:
+      items:
+        - gcp-ansible-ubuntu
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+  register: instanceubunt
+- debug:
+    var: instanceubunt
+###########################################################################
+#                                                                         #
+#                           WINDOWS CREATION                              #
+#                                                                         #
+###########################################################################
+- name: Create disk for new instance
+  gcp_compute_disk:
+    name: win
+    size_gb: "{{ disk_size_gb }}"
+    source_image: 'projects/windows-cloud/global/images/images/family/windows-2019'
+    zone: "{{ zones }}"
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+    state: present
+  register: diskwin
+
+- name: Create new instance
+  gcp_compute_instance:
+    state: present
+    name: win
+    machine_type: "{{ machine_type }}"
+    disks:
+    - auto_delete: true
+      boot: true
+      source: "{{ disk }}"
+    network_interfaces:
+    - network: "{{ network }}"
+      subnetwork: "{{ subnet }}"
+      access_configs:
+      - name: External NAT
+        nat_ip: "{{ address }}"
+        type: ONE_TO_ONE_NAT
+    zone: "{{ zones }}"
+    tags:
+      items:
+        - gcp-ansible-windows
+    project: "{{ projects }}"
+    auth_kind: "{{ serviceaccount }}"
+    service_account_file: "{{ service_account_file }}"
+  register: instancewin
+- debug:
+    var: instancewin
